@@ -60,3 +60,9 @@ target/
 
 .DS_Store
 plot.png
+
+# Usher
+beepboop_token.txt
+slack_token.txt
+sheets-secret.json
+client_secret.json
