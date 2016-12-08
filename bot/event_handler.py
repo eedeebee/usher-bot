@@ -45,7 +45,7 @@ class RtmEventHandler(object):
                 # elif re.search('hi|hey|hello|howdy', msg_txt):
                     # self.msg_writer.write_greeting(event['channel'], event['user'])
                 elif 'load' in msg_txt:
-                    self.msg_writer.load_config()
+                    self.msg_writer.load_config_sheet()
                     self.msg_writer.send_message(event['channel'], "All good.")
                 elif re.search('list', msg_txt, re.IGNORECASE):
                     self.msg_writer.write_all_teams(event['channel'], msg_txt)
