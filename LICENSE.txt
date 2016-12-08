@@ -1,3 +1,4 @@
+Copyright (c) 2016 Udemy, Inc.
 Copyright (c) 2011-2016 Robots And Pencils
 Copyright 2015 Slack Technologies, Inc.
 
