@@ -13,8 +13,6 @@ from stemming.porter2 import stem
 
 logger = logging.getLogger(__name__)
 
-config = yaml.load(open("config.yml", 'r'))
-
 def count(term, text):
     return len(re.findall(term, text, re.I))
 
@@ -22,13 +20,13 @@ def score(text, team):
     score = 0
     for term in team['Name'].split('\n'):
         score += count(term, text)
-        logger.info('term ' + term + " score: " + str(score))
+        logger.debug('term ' + term + " score: " + str(score))
     for term in team['Terms'].split('\n'):
         score += count(term, text)
-        logger.info('term ' + term + " score: " + str(score))
+        logger.debug('term ' + term + " score: " + str(score))
     for term in team['Responsibilities'].split('\n'):
         score += count(term, text)
-        logger.info('resp ' + term + " score: " + str(score))
+        logger.debug('resp ' + term + " score: " + str(score))
     return score
         
 def tx(d, s):
@@ -42,14 +40,13 @@ def find_teams(teams, text, m):
     scores = []
     for team in teams:
         s = score(text, team)
-        logger.info(team['Name'] + " score: " + str(s))
+        logger.debug(team['Name'] + " score: " + str(s))
         scores.append({'score': s, 'team': team})
 
     scores = sorted(scores, key=lambda i: i['score'], reverse=True)
     scores = [s for s in scores if s['score'] != 0]
 
     if len(scores) == 0 or scores[0]['score'] == 0:
-        #print text
         return 'nomatch'
 
     if m == 1:
@@ -73,38 +70,38 @@ class Messenger(object):
 
         self.http = credentials.authorize(httplib2.Http())
 
-        self.load_config()
+        self.load_config_sheet()
 
 
-    def load_config(self):
+    def load_config_sheet(self):
+        config = yaml.load(open("config.yml", 'r'))['sheet']
+
         discoveryUrl = ('https://sheets.googleapis.com/$discovery/rest?'
                         'version=v4')
         service = discovery.build('sheets', 'v4', http=self.http,
                                 discoveryServiceUrl=discoveryUrl)
     
-        spreadsheetId = '14FvIGbgO4iz6ys4vxhRPvQ7UFpdBqSeL55Cn8E3oPqE'
-
         ## TODO: handle auth failure
 
-        rangeName = 'Data!A1:A1'
+        rangeName = config['num_rows_range'] 
         result = service.spreadsheets().values().get(
-            spreadsheetId=spreadsheetId, range=rangeName).execute()
+            spreadsheetId=config['id'], range=rangeName).execute()
         data = result.get('values', [])
-        logging.info(data[0])
+        numRows = data[0][0]
+        logging.info("Num rows: " + numRows)
     
         # TODO: dynamic cols
 
-        rangeName = 'Teams!' + 'A1:K1'
+        rangeName = config['titles_range']
         result = service.spreadsheets().values().get(
-            spreadsheetId=spreadsheetId, range=rangeName).execute()
+            spreadsheetId=config['id'], range=rangeName).execute()
         titles = result.get('values', [])
     
         logging.info(titles);
     
-        numRows = data[0][0]
-        rangeName = 'Teams!' + 'A2:K' + numRows
+        rangeName = config['values_range'] + numRows
         result = service.spreadsheets().values().get(
-            spreadsheetId=spreadsheetId, range=rangeName).execute()
+            spreadsheetId=config['id'], range=rangeName).execute()
         values = result.get('values', [])
     
         logging.debug(values);
@@ -146,31 +143,31 @@ class Messenger(object):
 
     def write_all_teams(self, channel_id, msg_txt):
         #msg_txt = " ".join(map(lambda w: stem(w), msg_txt.split()))
-        #self.load_config()
+        #self.load_config_sheet()
         txt = self._all_teams(channel_id, msg_txt)
         self.send_message(channel_id, txt)
 
     def write_members(self, channel_id, msg_txt):
         #msg_txt = " ".join(map(lambda w: stem(w), msg_txt.split()))
-        #self.load_config()
+        #self.load_config_sheet()
         txt = self._members(channel_id, msg_txt)
         self.send_message(channel_id, txt)
 
     def write_managers(self, channel_id, msg_txt):
         #msg_txt = " ".join(map(lambda w: stem(w), msg_txt.split()))
-        #self.load_config()
+        #self.load_config_sheet()
         txt = self._managers(channel_id, msg_txt)
         self.send_message(channel_id, txt)
 
     def write_team(self, channel_id, msg_txt):
         #msg_txt = " ".join(map(lambda w: stem(w), msg_txt.split()))
-        #self.load_config()
+        #self.load_config_sheet()
         txt = self._team(channel_id, msg_txt)
         self.send_message(channel_id, txt)
 
     def write_team_details(self, channel_id, msg_txt):
         #msg_txt = " ".join(map(lambda w: stem(w), msg_txt.split()))
-        #self.load_config()
+        #self.load_config_sheet()
         txt = self._team_details(channel_id, msg_txt)
         self.send_message(channel_id, txt)
 
@@ -184,13 +181,13 @@ class Messenger(object):
         elif team == 'unclear' :
             txt = "I am not sure, but I will get it for you someday. In the meantime, can I get you a latte?"
         else:
-            logging.info("Team: " + str(team))
+            logging.debug("Team: " + str(team))
             name = team['Name']
             peeps = team['Individuals'].split('\n')
-            logging.info(peeps)
+            logging.debug(peeps)
             ids = list(map(lambda p: "<" + str(self.lookup_user_id(p)) + ">", peeps))
             txt = name + " has: \n\t" + "\n\t".join(ids)
-            logging.info(txt)
+            logging.debug(txt)
         return txt
 
     def _managers(self, channel_id, msg_txt):
@@ -200,13 +197,13 @@ class Messenger(object):
         elif team == 'unclear' :
             txt = "I am not sure, but I will get it for you someday. In the meantime, can I get you a latte?"
         else:
-            logging.info("Team: " + str(team) + "is lead by: ")
+            logging.debug("Team: " + str(team) + "is lead by: ")
             name = team['Name']
             peeps = team['Managers'].split('\n')
-            logging.info(peeps)
+            logging.debug(peeps)
             ids = list(map(lambda p: "<" + str(self.lookup_user_id(p)) + ">", peeps))
             txt = name + " is managed by: \n\t" + "\n\t".join(ids)
-            logging.info(txt)
+            logging.debug(txt)
         return txt
 
     def _team(self, channel_id, msg_txt):
@@ -220,7 +217,7 @@ class Messenger(object):
             txts = []
 
             for team in teams:
-                logging.info("Team: " + str(team))
+                logging.debug("Team: " + str(team))
                 name = team['Name']
                 channel = team['Slack channel']
                 txt = name + " covers this. See: `<" + self.lookup_channel_id(channel) + ">`."
@@ -240,7 +237,7 @@ class Messenger(object):
         elif team == 'unclear' :
             txt = "I am not sure, but I will get it for you someday. Or you can listen https://www.youtube.com/watch?v=4WjapUvIWgs"
         else:
-            logging.info("Team: " + str(team))
+            logging.debug("Team: " + str(team))
             name = team['Name']
             peeps = team['Managers'].split('\n')
             ids = list(map(lambda p: "<" + str(self.lookup_user_id(p)) + ">", peeps))

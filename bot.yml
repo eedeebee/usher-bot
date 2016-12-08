@@ -9,7 +9,7 @@ config:
     default: DEBUG
   - name: SHEETS_CREDS
     friendly_name: Google Sheets Credentials
-    info: Credentials to give you access to Google Sheets. See here...
+    info: Credentials to give you access to Google Sheets. Use test/test-gs.py to generate Credentials.
     type: secret
     default: none
 screenshots:
